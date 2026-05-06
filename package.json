@@ -8,5 +8,14 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GastonMagarinos/groupnineteamnarcizo.git"
+  },
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/GastonMagarinos/groupnineteamnarcizo/issues"
+  },
+  "homepage": "https://github.com/GastonMagarinos/groupnineteamnarcizo#readme"
 }
