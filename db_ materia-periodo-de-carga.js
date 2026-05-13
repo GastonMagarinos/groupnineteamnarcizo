@@ -522,3 +522,298 @@ menuGestionarPeriodos().then(() => {
   console.error("Error:", err);
   rl.close();
 });
+
+
+
+/**
+ * excepciones_edicion.js
+ * Integrante 3 — Milestone 3
+ *
+ * Issue: Habilitar excepciones de edición por docente  [Administrador]
+ *
+ * Depende de:
+ *   - db_materia.js       (Milestone 1) → periodoActivo
+ *   - gestionar_periodos.js (Milestone 2) → periodoHabilitado()
+ *   - db del equipo                      → estudiantes, logAuditoria (Int. 5)
+ *
+ * Para integrar: agregar menuGestionarExcepciones() como opción
+ * en el menú de Administrador de calificaciones.js.
+ */
+
+const readline = require("readline");
+
+// ─────────────────────────────────────────────
+// DB (standalone — al integrar, usar el db compartido)
+// ─────────────────────────────────────────────
+
+const periodoActivo = {
+  id:          1,
+  nombre:      "Primer cuatrimestre 2025",
+  inicio:      new Date("2025-03-01"),
+  cierre:      new Date("2026-12-31"),
+  estado:      "cerrado",   // cerrado para poder probar las excepciones
+  excepciones: [],
+};
+
+const estudiantes = [
+  { legajo: "U001", nombre: "Ana García"      },
+  { legajo: "U002", nombre: "Bruno Martínez"  },
+  { legajo: "U003", nombre: "Carla López"     },
+  { legajo: "U004", nombre: "Diego Fernández" },
+  { legajo: "U005", nombre: "Elena Rodríguez" },
+];
+
+// Auditoría compartida con Integrante 5
+const logAuditoria = [];
+
+// ─────────────────────────────────────────────
+// LÓGICA DE NEGOCIO — EXCEPCIONES
+// ─────────────────────────────────────────────
+
+/**
+ * Verifica si un legajo puede editar calificaciones.
+ * Primero chequea excepción individual, luego el período global.
+ * @param {string} legajo
+ * @returns {boolean}
+ */
+function periodoHabilitado(legajo = null) {
+  if (legajo && periodoActivo.excepciones.includes(legajo.toUpperCase())) return true;
+  if (periodoActivo.estado === "cerrado") return false;
+  const hoy = new Date();
+  return hoy >= periodoActivo.inicio && hoy <= periodoActivo.cierre;
+}
+
+/**
+ * Habilita excepción de edición para un legajo.
+ * @param {string} legajo
+ * @returns {{ ok: boolean, motivo?: string }}
+ */
+function habilitarExcepcion(legajo) {
+  const l = legajo.toUpperCase();
+  if (periodoActivo.excepciones.includes(l)) {
+    return { ok: false, motivo: "ya_tiene_excepcion" };
+  }
+  periodoActivo.excepciones.push(l);
+  registrarAuditoria("admin", l, "sin_excepcion", "excepcion_habilitada");
+  return { ok: true };
+}
+
+/**
+ * Revoca la excepción de edición de un legajo.
+ * @param {string} legajo
+ * @returns {{ ok: boolean, motivo?: string }}
+ */
+function revocarExcepcion(legajo) {
+  const l = legajo.toUpperCase();
+  const idx = periodoActivo.excepciones.indexOf(l);
+  if (idx === -1) {
+    return { ok: false, motivo: "sin_excepcion" };
+  }
+  periodoActivo.excepciones.splice(idx, 1);
+  registrarAuditoria("admin", l, "excepcion_habilitada", "excepcion_revocada");
+  return { ok: true };
+}
+
+/**
+ * Registra el cambio en el log de auditoría (conecta con Int. 5).
+ */
+function registrarAuditoria(usuario, legajo, estadoAnterior, estadoNuevo) {
+  logAuditoria.push({
+    usuario,
+    legajo,
+    estadoAnterior,
+    estadoNuevo,
+    fecha: new Date().toLocaleString("es-AR"),
+  });
+}
+
+// ─────────────────────────────────────────────
+// HELPERS DE CONSOLA
+// ─────────────────────────────────────────────
+
+const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+
+const pregunta      = (msg) => new Promise((res) => rl.question(msg, res));
+const limpiar       = () => process.stdout.write("\x1Bc");
+const linea         = (char = "─", len = 56) => console.log(char.repeat(len));
+const titulo        = (texto) => { linea(); console.log(`  ${texto}`); linea(); };
+const pausa         = () => pregunta("\n  Presioná ENTER para continuar...");
+const colorVerde    = (t) => `\x1b[32m${t}\x1b[0m`;
+const colorRojo     = (t) => `\x1b[31m${t}\x1b[0m`;
+const colorAmarillo = (t) => `\x1b[33m${t}\x1b[0m`;
+const colorCian     = (t) => `\x1b[36m${t}\x1b[0m`;
+const colorGris     = (t) => `\x1b[90m${t}\x1b[0m`;
+const negrita       = (t) => `\x1b[1m${t}\x1b[0m`;
+
+/**
+ * Busca un estudiante por legajo (case-insensitive).
+ */
+function buscarEstudiante(legajo) {
+  return estudiantes.find((e) => e.legajo.toUpperCase() === legajo.toUpperCase());
+}
+
+/**
+ * Muestra la lista de estudiantes con su estado de excepción.
+ */
+function mostrarTablaExcepciones() {
+  const estadoPeriodo = periodoActivo.estado === "abierto"
+    ? colorVerde("ABIERTO")
+    : colorRojo("CERRADO");
+
+  console.log(`\n  Período : ${negrita(periodoActivo.nombre)} [${estadoPeriodo}]`);
+  console.log(`\n  ${"Legajo".padEnd(8)} ${"Nombre".padEnd(24)} ${"Puede editar".padStart(14)}`);
+  linea("·", 56);
+
+  estudiantes.forEach((e) => {
+    const tieneExcepcion = periodoActivo.excepciones.includes(e.legajo.toUpperCase());
+    const puede          = periodoHabilitado(e.legajo);
+    const estado         = puede
+      ? (tieneExcepcion ? colorCian("Sí (excepción)") : colorVerde("Sí"))
+      : colorGris("No");
+    console.log(`  ${e.legajo.padEnd(8)} ${e.nombre.padEnd(24)} ${estado.padStart(14)}`);
+  });
+
+  linea("·", 56);
+  console.log(
+    `  Excepciones activas: ${
+      periodoActivo.excepciones.length > 0
+        ? colorCian(periodoActivo.excepciones.join(", "))
+        : colorGris("ninguna")
+    }`
+  );
+}
+
+// ─────────────────────────────────────────────
+// MENÚ: GESTIONAR EXCEPCIONES DE EDICIÓN
+// ─────────────────────────────────────────────
+
+async function menuGestionarExcepciones() {
+  while (true) {
+    limpiar();
+    titulo("Excepciones de edición por docente  [Administrador]");
+    mostrarTablaExcepciones();
+
+    console.log();
+    console.log("   [1]  Habilitar excepción para un estudiante");
+    console.log("   [2]  Revocar excepción de un estudiante");
+    console.log("   [3]  Ver log de auditoría");
+    console.log("   [0]  Volver al menú principal");
+    console.log();
+
+    const op = (await pregunta("  Opción: ")).trim();
+
+    // ── [1] Habilitar excepción ────────────────────────────────────
+    if (op === "1") {
+      limpiar();
+      titulo("Habilitar excepción de edición");
+
+      const legajo = (await pregunta("  Legajo del estudiante: ")).trim().toUpperCase();
+      const est    = buscarEstudiante(legajo);
+
+      if (!est) {
+        console.log(colorRojo(`\n  ✗ No existe ningún estudiante con legajo "${legajo}".`));
+        await pausa();
+        continue;
+      }
+
+      const resultado = habilitarExcepcion(legajo);
+
+      if (!resultado.ok) {
+        console.log(colorAmarillo(`\n  ⚠  ${est.nombre} ya tiene una excepción activa.`));
+        console.log(colorGris("     Puede editar calificaciones aunque el período esté cerrado."));
+      } else {
+        console.log(colorVerde(`\n  ✓ Excepción habilitada para ${est.nombre} (${legajo}).`));
+        console.log(colorGris("    Podrá editar calificaciones aunque el período esté cerrado."));
+        console.log(colorGris("    El cambio quedó registrado en el log de auditoría."));
+      }
+      await pausa();
+
+    // ── [2] Revocar excepción ──────────────────────────────────────
+    } else if (op === "2") {
+      limpiar();
+      titulo("Revocar excepción de edición");
+
+      if (periodoActivo.excepciones.length === 0) {
+        console.log(colorAmarillo("\n  ⚠  No hay excepciones activas para revocar."));
+        await pausa();
+        continue;
+      }
+
+      // Mostrar solo los que tienen excepción
+      console.log("\n  Estudiantes con excepción activa:");
+      linea("·", 56);
+      periodoActivo.excepciones.forEach((l) => {
+        const est = buscarEstudiante(l);
+        console.log(`  · ${l.padEnd(8)} ${est ? est.nombre : colorGris("(legajo no encontrado)")}`);
+      });
+      linea("·", 56);
+
+      const legajo = (await pregunta("\n  Legajo a revocar: ")).trim().toUpperCase();
+      const est    = buscarEstudiante(legajo);
+      const resultado = revocarExcepcion(legajo);
+
+      if (!resultado.ok) {
+        console.log(colorRojo(`\n  ✗ "${legajo}" no tiene una excepción activa.`));
+      } else {
+        const nombre = est ? est.nombre : legajo;
+        console.log(colorVerde(`\n  ✓ Excepción revocada para ${nombre} (${legajo}).`));
+        console.log(colorGris("    Ya no podrá editar calificaciones con el período cerrado."));
+        console.log(colorGris("    El cambio quedó registrado en el log de auditoría."));
+      }
+      await pausa();
+
+    // ── [3] Log de auditoría ───────────────────────────────────────
+    } else if (op === "3") {
+      limpiar();
+      titulo("Log de auditoría — Excepciones");
+
+      if (logAuditoria.length === 0) {
+        console.log(colorGris("\n  No hay registros de auditoría todavía."));
+      } else {
+        console.log(
+          `\n  ${"Fecha".padEnd(22)} ${"Legajo".padEnd(8)} ${"Anterior".padEnd(20)} Nueva`
+        );
+        linea("·", 56);
+        logAuditoria.forEach((entry) => {
+          console.log(
+            `  ${entry.fecha.padEnd(22)} ${entry.legajo.padEnd(8)} ` +
+            `${colorGris(entry.estadoAnterior.padEnd(20))} ${colorCian(entry.estadoNuevo)}`
+          );
+        });
+      }
+      await pausa();
+
+    // ── [0] Volver ─────────────────────────────────────────────────
+    } else if (op === "0") {
+      break;
+
+    } else {
+      console.log(colorRojo("  ✗ Opción inválida."));
+      await new Promise((r) => setTimeout(r, 600));
+    }
+  }
+}
+
+// ─────────────────────────────────────────────
+// EXPORTAR (descomentar al integrar)
+// ─────────────────────────────────────────────
+
+// module.exports = {
+//   habilitarExcepcion,
+//   revocarExcepcion,
+//   periodoHabilitado,
+//   menuGestionarExcepciones,
+// };
+
+// ─────────────────────────────────────────────
+// INICIO (eliminar al integrar en calificaciones.js)
+// ─────────────────────────────────────────────
+
+menuGestionarExcepciones().then(() => {
+  console.log(colorGris("\n  Saliendo...\n"));
+  rl.close();
+  process.exit(0);
+}).catch((err) => {
+  console.error("Error:", err);
+  rl.close();
+});
