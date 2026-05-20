@@ -3,3 +3,4 @@ node_modules
 package.json
 notificacion.db
 notificacion.db
+.vscode
