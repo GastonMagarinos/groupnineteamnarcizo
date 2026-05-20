@@ -8,7 +8,7 @@ const calificaciones = [
   { legajo: "U002", materiaId: 1, parcial1: 4,    parcial2: 5,    final: 4,    publicada: true,  fechaCarga: "2025-06-10" },
   { legajo: "U003", materiaId: 1, parcial1: 9,    parcial2: 10,   final: 9,    publicada: true,  fechaCarga: "2025-06-10" },
   { legajo: "U004", materiaId: 2, parcial1: 6,    parcial2: 7,    final: 7,    publicada: true,  fechaCarga: "2025-06-11" },
-  { legajo: "U005", materiaId: 2, parcial1: null, parcial2: null, final: null, publicada: false, fechaCarga: null         },
+  { legajo: "U005", materiaId: 2, parcial1: 7, parcial2: 8, final: 8, publicada: true, fechaCarga: null         },
   { legajo: "U001", materiaId: 3, parcial1: 7,    parcial2: 8,    final: null, publicada: false, fechaCarga: null         },
 ];
 

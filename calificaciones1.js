@@ -213,7 +213,8 @@ async function us04_consultarCalificaciones() {
   linea("·", 56);
  
   misCals.forEach((c) => {
-    const mat = buscarMateria(c.materia_id);
+    const mat = buscarMateria(c.materiaId);
+    if (!mat) return; // ignorar si la materia no existe
     if (!c.publicada) {
       console.log(`  ${mat.nombre.padEnd(30)} ${colorGris("Pendiente de publicación")}`);
     } else {
@@ -306,7 +307,8 @@ async function us06_descargarHistorial() {
   console.log(`  ${"─".repeat(54)}`);
  
   misCals.forEach((c) => {
-    const mat    = buscarMateria(c.materia_id);
+    const mat    = buscarMateria(c.materiaId);
+    if (!mat) return; // ignorar si la materia no existe
     const estado = c.final === null ? "En curso" : c.final >= 6 ? "Aprobado" : "Aplazado";
     console.log(
       `  ${mat.nombre.padEnd(28)} ${String(c.parcial1 ?? "-").padStart(4)} ${String(c.parcial2 ?? "-").padStart(4)} ${String(c.final ?? "-").padStart(6)}  ${estado}`
