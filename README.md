@@ -4,7 +4,7 @@
 
 > **Team Ferrari** — Grupo 9 | Proyecto Final  
 > Materia: Laboratorio de Computación · Universidad
-
+> Integrantes: Magariños Gaston - Robaina Ignacio - Quaglia Ferrer Agustin - Delfini Tiago - Bisignani Giovanni
 ---
 
 ## 📋 Descripción
